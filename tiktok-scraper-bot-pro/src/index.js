@@ -314,10 +314,10 @@ async function fetchVideoEngagement(page, videoUrl) {
 }
 
 // ===============================
-// PARALLEL 6 TAB WORKER (Biar cepet)
+// PARALLEL 3 TAB WORKER (Biar cepet)
 // ===============================
-async function runParallelEngagement6Tabs(context, videos, username) {
-    const WORKERS = 6;
+async function runParallelEngagement3Tabs(context, videos, username) {
+    const WORKERS = 3;
     const pages = [];
     const results = Array(videos.length);
     let cursor = 0;
@@ -457,10 +457,10 @@ async function runParallelEngagement6Tabs(context, videos, username) {
 
         console.log(chalk.green(`✓ Ditemukan ${targetVideos.length} video`));
 
-        const WORKERS = 6;
+        const WORKERS = 3;
         console.log(chalk.cyan(`⚡ Mulai scraping engagement (${WORKERS} parallel workers - FAST MODE)...`));
 
-        const videos = await runParallelEngagement6Tabs(
+        const videos = await runParallelEngagement3Tabs(
             context,
             targetVideos,
             username
@@ -517,9 +517,9 @@ async function runParallelEngagement6Tabs(context, videos, username) {
     await browser.close();
 
     const finalBox = boxen(
-        chalk.green.bold("🎉 SEMUA SCRAPING SELESAI!") + "\n\n" +
+        chalk.green.bold("🎉 SCRAPING TIKTOK SELESAI") + "\n\n" +
         chalk.white(`Total Akun: `) + chalk.cyan(usernames.length) + "\n" +
-        chalk.white(`Hasil disimpan di: `) + chalk.yellow("results/"),
+        chalk.white(`Hasil disimpan di folder: `) + chalk.yellow("results"),
         {
             padding: 2,
             margin: 1,
