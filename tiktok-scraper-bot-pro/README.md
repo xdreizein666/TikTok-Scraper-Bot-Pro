@@ -133,8 +133,8 @@ TikTok Scraper Bot Pro adalah tool profesional untuk scraping data profil dan vi
 
 1. **Clone Repository**
 ```bash
-git clone https://github.com/yourusername/tiktok-scraper-bot.git
-cd tiktok-scraper-bot
+git clone https://github.com/yourusername/tiktok-scraper-bot-pro.git
+cd tiktok-scraper-bot-pro
 ```
 
 2. **Install Dependencies**
@@ -163,7 +163,7 @@ npm start
 ```
 
 Kemudian:
-1. **Input Username**: Masukkan username TikTok (tanpa @)
+1. **Input Username**: Masukkan username TikTok (tanpa @) 
 ```
 📝 Masukkan username TikTok: mydentsdentalcare
 ```
@@ -588,3 +588,4 @@ If you find this project useful, please consider giving it a ⭐!
 [⬆ Back to Top](#-tiktok-scraper-bot-pro)
 
 </div>
+
