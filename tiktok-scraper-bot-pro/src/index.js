@@ -5,18 +5,16 @@ const chalk = require("chalk");
 const Table = require("cli-table3");
 const boxen = require("boxen");
 
-// ===============================
+
 // CLI
-// ===============================
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
 const ask = q => new Promise(r => rl.question(q, r));
 
-// ===============================
+
 // UTIL
-// ===============================
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function waitForSelectorRetry(
@@ -46,9 +44,8 @@ function parseCountText(text = "0") {
     return Math.round((num || 0) * multiplier);
 }
 
-// ===============================
+
 // FANCY LOGGER UTILITIES
-// ===============================
 function printAsciiArt() {
     const art = `
 ╔════════════════════════════════════════════════════════════╗
@@ -60,7 +57,7 @@ function printAsciiArt() {
 ║      ██║   ██║██║  ██╗   ██║   ╚██████╔╝██║  ██╗         ║
 ║      ╚═╝   ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝         ║
 ║                                                            ║
-║           🤖 SCRAPER BOT PRO v2.0 - Enhanced              ║
+║           🤖 SCRAPER BOT PRO v3.0 - Enhanced              ║
 ║             Created with ❤️  by @mfajarb                   ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
@@ -214,9 +211,8 @@ function printTopVideos(videos) {
     console.log(table.toString());
 }
 
-// ===============================
+
 // PROFILE SCRAPER
-// ===============================
 async function scrapeProfileFromDOM(page) {
     await waitForSelectorRetry(page, '[data-e2e="followers-count"]');
 
@@ -235,9 +231,8 @@ async function scrapeProfileFromDOM(page) {
     });
 }
 
-// ===============================
+
 // VIDEO GRID SCRAPER (VIEWS)
-// ===============================
 async function scrapeVideoGrid(page, scrollTimes = 5) {
     for (let i = 0; i < scrollTimes; i++) {
         await page.evaluate(() =>
@@ -259,9 +254,8 @@ async function scrapeVideoGrid(page, scrollTimes = 5) {
     });
 }
 
-// ===============================
+
 // VIDEO ENGAGEMENT (FINAL & ROBUST)
-// ===============================
 async function fetchVideoEngagement(page, videoUrl) {
     try {
         await page.goto(videoUrl, { waitUntil: "networkidle" });
@@ -313,11 +307,10 @@ async function fetchVideoEngagement(page, videoUrl) {
     }
 }
 
-// ===============================
-// PARALLEL 3 TAB WORKER (Biar cepet)
-// ===============================
-async function runParallelEngagement3Tabs(context, videos, username) {
-    const WORKERS = 3;
+
+// PARALLEL 6 TAB WORKER (Biar cepet)
+async function runParallelEngagement6Tabs(context, videos, username) {
+    const WORKERS = 6;
     const pages = [];
     const results = Array(videos.length);
     let cursor = 0;
@@ -373,16 +366,316 @@ async function runParallelEngagement3Tabs(context, videos, username) {
     return results;
 }
 
-// ===============================
+
+// REPOST VIDEO SCRAPER (NEW FEATURE)
+async function scrapeRepostGrid(page, scrollTimes = 5) {
+    console.log(chalk.gray("⏳ Mencari tab Reposts..."));
+
+    // Click on Repost tab
+    try {
+        await waitForSelectorRetry(page, '[data-e2e="repost-tab"]', { timeout: 5000 });
+        await page.click('[data-e2e="repost-tab"]');
+        await sleep(2000);
+        console.log(chalk.green("✓ Tab Reposts ditemukan.."));
+    } catch (err) {
+        console.log(chalk.yellow("⚠️  Tab Reposts tidak ditemukan atau user tidak punya repost"));
+        return [];
+    }
+
+    // Scroll to load more repost videos
+    for (let i = 0; i < scrollTimes; i++) {
+        await page.evaluate(() =>
+            window.scrollTo(0, document.body.scrollHeight)
+        );
+        await sleep(1200);
+    }
+
+    // Wait for repost items
+    try {
+        await waitForSelectorRetry(page, 'div[data-e2e="user-repost-item"]', { timeout: 5000 });
+    } catch (err) {
+        console.log(chalk.yellow("⚠️  Tidak ada video repost yg ditemukan.."));
+        return [];
+    }
+
+    return await page.evaluate(() => {
+        return Array.from(
+            document.querySelectorAll('div[data-e2e="user-repost-item"]')
+        ).map(item => ({
+            video_url: item.querySelector("a")?.href || null,
+            views: item.querySelector('[data-e2e="video-views"]')?.innerText || "0"
+        }));
+    });
+}
+
+async function runRepostScraping(context, username, page) {
+    const headerBox = boxen(
+        chalk.bold.magenta(`SCRAPING REPOST VIDEO TIKTOK`) + "\n" +
+        chalk.white.bold(`@${username}`),
+        {
+            padding: 1,
+            margin: { top: 1, bottom: 1, left: 0, right: 0 },
+            borderStyle: "double",
+            borderColor: "magenta",
+            align: "center"
+        }
+    );
+    console.log(headerBox);
+
+    console.log(chalk.gray(`⏳ Memuat profil @${username}...`));
+
+    await page.goto(`https://www.tiktok.com/@${username}`, {
+        waitUntil: "domcontentloaded"
+    });
+    await sleep(2000);
+
+    const raw = await scrapeProfileFromDOM(page);
+    const profile = {
+        username,
+        follower: parseCountText(raw.follower),
+        following: parseCountText(raw.following),
+        likes: parseCountText(raw.likes),
+        bio: raw.bio,
+        bioLink: raw.bioLink
+    };
+
+    printProfileBox(profile);
+
+    console.log(chalk.gray("\n⏳ Mengumpulkan daftar video repost..."));
+    const repostGrid = await scrapeRepostGrid(page, 5);
+
+    if (repostGrid.length === 0) {
+        console.log(chalk.yellow("\n⚠️  Tidak ada video repost untuk di-scrape"));
+        return null;
+    }
+
+    console.log(chalk.green(`✓ Ditemukan ${repostGrid.length} video repost`));
+
+    // Convert grid data to final format (no engagement scraping needed)
+    const repostVideos = repostGrid.map(item => ({
+        video_url: item.video_url,
+        views: parseCountText(item.views)
+    }));
+
+    // Print repost videos table
+    console.log(chalk.magenta.bold("\n📹 REPOST VIDEOS LIST:"));
+    const table = new Table({
+        head: [
+            chalk.magenta.bold("#"),
+            chalk.magenta.bold("VIEWS"),
+            chalk.magenta.bold("VIDEO URL")
+        ],
+        colWidths: [5, 15, 60],
+        style: {
+            head: [],
+            border: ["magenta"]
+        }
+    });
+
+    repostVideos.forEach((v, idx) => {
+        table.push([
+            chalk.white(`${idx + 1}`),
+            chalk.cyan(formatNumber(v.views)),
+            chalk.gray(v.video_url.substring(0, 55) + "...")
+        ]);
+    });
+
+    console.log(table.toString());
+
+    // Calculate total views
+    const totalViews = repostVideos.reduce((s, v) => s + v.views, 0);
+    const avgViews = Math.round(totalViews / repostVideos.length);
+
+    // Print simple statistics
+    const statsTable = new Table({
+        head: [chalk.yellow.bold("METRIC"), chalk.yellow.bold("VALUE")],
+        colWidths: [25, 25],
+        style: {
+            head: [],
+            border: ["yellow"]
+        }
+    });
+
+    statsTable.push(
+        [chalk.white("📹 Total Repost Videos"), chalk.cyan(repostVideos.length)],
+        [chalk.white("👁  Total Views"), chalk.cyan(formatNumber(totalViews))],
+        [chalk.white("📊 Average Views"), chalk.cyan(formatNumber(avgViews))]
+    );
+
+    console.log("\n" + statsTable.toString());
+
+    // Save result with repost prefix
+    const resultData = {
+        scrapedAt: new Date().toISOString(),
+        type: "repost",
+        profile: {
+            ...profile,
+            repostCountLoaded: repostVideos.length
+        },
+        repostVideos: repostVideos,
+        statistics: {
+            totalVideos: repostVideos.length,
+            totalViews: totalViews,
+            averageViews: avgViews
+        }
+    };
+
+    const filePath = saveResult(`${username}_reposts`, resultData);
+
+    // Print JSON Preview
+    console.log(chalk.magenta.bold("\n💾 SAVED JSON OUTPUT:"));
+    const jsonPreview = {
+        scrapedAt: resultData.scrapedAt,
+        type: resultData.type,
+        profile: resultData.profile,
+        repostVideos: repostVideos.slice(0, 3).map(v => ({
+            ...v,
+            video_url: v.video_url.substring(0, 50) + "..."
+        })),
+        "...": `and ${Math.max(0, repostVideos.length - 3)} more videos`,
+        statistics: resultData.statistics
+    };
+
+    const jsonBox = boxen(
+        colorizeJSON(jsonPreview),
+        {
+            padding: 1,
+            margin: { top: 0, bottom: 1, left: 0, right: 0 },
+            borderStyle: "round",
+            borderColor: "magenta"
+        }
+    );
+    console.log(jsonBox);
+
+    const successBox = boxen(
+        chalk.green.bold("✅ SCRAPING REPOST BERHASIL!") + "\n\n" +
+        chalk.white(`Username: `) + chalk.cyan(`@${username}`) + "\n" +
+        chalk.white(`File: `) + chalk.yellow(filePath) + "\n" +
+        chalk.white(`Repost Videos: `) + chalk.blue(repostVideos.length) + "\n" +
+        chalk.white(`Total Views: `) + chalk.magenta(formatNumber(totalViews)) + "\n" +
+        chalk.white(`Avg Views: `) + chalk.magenta(formatNumber(avgViews)),
+        {
+            padding: 1,
+            margin: 1,
+            borderStyle: "double",
+            borderColor: "green",
+            align: "center"
+        }
+    );
+    console.log(successBox);
+
+    return resultData;
+}
+
+async function runEngagementScraping(context, username, page) {
+    const headerBox = boxen(
+        chalk.bold.cyan(`SCRAPING VIDEO ENGAGEMENT`) + "\n" +
+        chalk.white.bold(`@${username}`),
+        {
+            padding: 1,
+            margin: { top: 1, bottom: 1, left: 0, right: 0 },
+            borderStyle: "double",
+            borderColor: "cyan",
+            align: "center"
+        }
+    );
+    console.log(headerBox);
+
+    console.log(chalk.gray(`⏳ Memuat profil @${username}...`));
+
+    await page.goto(`https://www.tiktok.com/@${username}`, {
+        waitUntil: "domcontentloaded"
+    });
+    await sleep(2000);
+
+    const raw = await scrapeProfileFromDOM(page);
+    const profile = {
+        username,
+        follower: parseCountText(raw.follower),
+        following: parseCountText(raw.following),
+        likes: parseCountText(raw.likes),
+        bio: raw.bio,
+        bioLink: raw.bioLink
+    };
+
+    printProfileBox(profile);
+
+    console.log(chalk.gray("\n⏳ Mengumpulkan daftar video..."));
+    const grid = await scrapeVideoGrid(page, 5);
+    const MAX_VIDEOS = 15;
+    const targetVideos = grid.slice(0, MAX_VIDEOS);
+
+    console.log(chalk.green(`✓ Ditemukan ${targetVideos.length} video`));
+
+    const WORKERS = 6;
+    console.log(chalk.cyan(`⚡ Mulai scraping engagement (${WORKERS} parallel workers - FAST MODE)...`));
+
+    const videos = await runParallelEngagement6Tabs(
+        context,
+        targetVideos,
+        username
+    );
+
+    // Print statistics
+    printStatsBox(videos, profile);
+
+    // Print top videos
+    printTopVideos(videos);
+
+    // Save result
+    const resultData = {
+        scrapedAt: new Date().toISOString(),
+        type: "engagement",
+        profile: {
+            ...profile,
+            videoCountLoaded: videos.length
+        },
+        videos
+    };
+
+    const filePath = saveResult(username, resultData);
+
+    // Print JSON Preview
+    console.log(chalk.magenta.bold("\n💾 SAVED JSON OUTPUT:"));
+    const jsonBox = boxen(
+        colorizeJSON(resultData),
+        {
+            padding: 1,
+            margin: { top: 0, bottom: 1, left: 0, right: 0 },
+            borderStyle: "round",
+            borderColor: "magenta"
+        }
+    );
+    console.log(jsonBox);
+
+    const successBox = boxen(
+        chalk.green.bold("✅ SCRAPING ENGAGEMENT BERHASIL!") + "\n\n" +
+        chalk.white(`Username: `) + chalk.cyan(`@${username}`) + "\n" +
+        chalk.white(`File: `) + chalk.yellow(filePath) + "\n" +
+        chalk.white(`Videos: `) + chalk.blue(videos.length) + "\n" +
+        chalk.white(`Total Views: `) + chalk.magenta(formatNumber(videos.reduce((s, v) => s + v.views, 0))),
+        {
+            padding: 1,
+            margin: 1,
+            borderStyle: "double",
+            borderColor: "green",
+            align: "center"
+        }
+    );
+    console.log(successBox);
+
+    return resultData;
+}
+
+
 // MAIN (otaknya)
-// ===============================
 (async () => {
     console.clear();
     printAsciiArt();
 
     const titleBox = boxen(
         chalk.bold.white("TikTok Profile & Video Analytics Scraper") + "\n" +
-        chalk.gray("Scrape profile data, video stats, and engagement metrics"),
+        chalk.gray("Scrape profile data, video stats, engagement metrics, and reposts"),
         {
             padding: 1,
             margin: 1,
@@ -393,6 +686,24 @@ async function runParallelEngagement3Tabs(context, videos, username) {
     );
     console.log(titleBox);
 
+    // Menu Pilihan
+    console.log(chalk.bold.white("\n📋 PILIH MODE SCRAPING:\n"));
+    console.log(chalk.cyan("  1.") + chalk.white(" Scrape Video Analytics") + chalk.gray(" (likes, comments, shares, views)"));
+    console.log(chalk.magenta("  2.") + chalk.white(" Scrape Video Repost") + chalk.gray(" (reposted videos dari user)"));
+    console.log("");
+
+    const modeInput = await ask(chalk.yellow("🎯 Pilih mode (1/2): "));
+    const mode = modeInput.trim();
+
+    if (mode !== "1" && mode !== "2") {
+        console.log(chalk.red("❌ Pilihan tidak valid. Harus 1 atau 2"));
+        rl.close();
+        process.exit(1);
+    }
+
+    const modeText = mode === "1" ? "Video Engagement" : "Video Repost";
+    console.log(chalk.green(`✓ Mode dipilih: ${modeText}\n`));
+
     const input = await ask(chalk.yellow("📝 Masukkan username TikTok: "));
     const usernames = input
         .split(",")
@@ -400,7 +711,8 @@ async function runParallelEngagement3Tabs(context, videos, username) {
         .filter(Boolean);
 
     if (!usernames.length) {
-        console.log(chalk.red("❌ Tidak ada username yang valid cok"));
+        console.log(chalk.red("❌ Tidak ada username yang valid"));
+        rl.close();
         process.exit(1);
     }
 
@@ -418,108 +730,30 @@ async function runParallelEngagement3Tabs(context, videos, username) {
     for (let i = 0; i < usernames.length; i++) {
         const username = usernames[i];
 
-        const headerBox = boxen(
-            chalk.bold.cyan(`SCRAPING ACCOUNT ${i + 1}/${usernames.length}`) + "\n" +
-            chalk.white.bold(`@${username}`),
-            {
-                padding: 1,
-                margin: { top: 1, bottom: 1, left: 0, right: 0 },
-                borderStyle: "double",
-                borderColor: "cyan",
-                align: "center"
+        try {
+            if (mode === "1") {
+                await runEngagementScraping(context, username, page);
+            } else {
+                await runRepostScraping(context, username, page);
             }
-        );
-        console.log(headerBox);
+        } catch (error) {
+            console.log(chalk.red(`\n❌ Error scraping @${username}: ${error.message}`));
+        }
 
-        console.log(chalk.gray(`⏳ Memuat profil @${username}...`));
-
-        await page.goto(`https://www.tiktok.com/@${username}`, {
-            waitUntil: "domcontentloaded"
-        });
-        await sleep(2000);
-
-        const raw = await scrapeProfileFromDOM(page);
-        const profile = {
-            username,
-            follower: parseCountText(raw.follower),
-            following: parseCountText(raw.following),
-            likes: parseCountText(raw.likes),
-            bio: raw.bio,
-            bioLink: raw.bioLink
-        };
-
-        printProfileBox(profile);
-
-        console.log(chalk.gray("\n⏳ Mengumpulkan daftar video..."));
-        const grid = await scrapeVideoGrid(page, 5);
-        const MAX_VIDEOS = 15;
-        const targetVideos = grid.slice(0, MAX_VIDEOS);
-
-        console.log(chalk.green(`✓ Ditemukan ${targetVideos.length} video`));
-
-        const WORKERS = 3;
-        console.log(chalk.cyan(`⚡ Mulai scraping engagement (${WORKERS} parallel workers - FAST MODE)...`));
-
-        const videos = await runParallelEngagement3Tabs(
-            context,
-            targetVideos,
-            username
-        );
-
-        // Print statistics
-        printStatsBox(videos, profile);
-
-        // Print top videos
-        printTopVideos(videos);
-
-        // Save result
-        const resultData = {
-            scrapedAt: new Date().toISOString(),
-            profile: {
-                ...profile,
-                videoCountLoaded: videos.length
-            },
-            videos
-        };
-
-        const filePath = saveResult(username, resultData);
-
-        // Print JSON Preview
-        console.log(chalk.magenta.bold("\n💾 SAVED JSON OUTPUT:"));
-        const jsonBox = boxen(
-            colorizeJSON(resultData),
-            {
-                padding: 1,
-                margin: { top: 0, bottom: 1, left: 0, right: 0 },
-                borderStyle: "round",
-                borderColor: "magenta"
-            }
-        );
-        console.log(jsonBox);
-
-        const successBox = boxen(
-            chalk.green.bold("✅ SCRAPING TIKTOK BERHASIL!") + "\n\n" +
-            chalk.white(`Username: `) + chalk.cyan(`@${username}`) + "\n" +
-            chalk.white(`File: `) + chalk.yellow(filePath) + "\n" +
-            chalk.white(`Videos: `) + chalk.blue(videos.length) + "\n" +
-            chalk.white(`Total Views: `) + chalk.magenta(formatNumber(videos.reduce((s, v) => s + v.views, 0))),
-            {
-                padding: 1,
-                margin: 1,
-                borderStyle: "double",
-                borderColor: "green",
-                align: "center"
-            }
-        );
-        console.log(successBox);
+        // Jeda antar user
+        if (i < usernames.length - 1) {
+            console.log(chalk.gray("\n⏳ Menunggu 3 detik sebelum scraping akun berikutnya...\n"));
+            await sleep(3000);
+        }
     }
 
     await browser.close();
 
     const finalBox = boxen(
-        chalk.green.bold("🎉 SCRAPING TIKTOK SELESAI") + "\n\n" +
+        chalk.green.bold("🎉 SEMUA SCRAPING SELESAI!") + "\n\n" +
+        chalk.white(`Mode: `) + chalk.cyan(modeText) + "\n" +
         chalk.white(`Total Akun: `) + chalk.cyan(usernames.length) + "\n" +
-        chalk.white(`Hasil disimpan di folder: `) + chalk.yellow("results"),
+        chalk.white(`Hasil disimpan di: `) + chalk.yellow("results/"),
         {
             padding: 2,
             margin: 1,
