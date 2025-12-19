@@ -1,6 +1,7 @@
 const readline = require("readline");
 const { launchBrowser } = require("./browser");
 const { saveResult } = require("./output");
+const { CheckpointManager } = require("./checkpoint");
 const chalk = require("chalk");
 const Table = require("cli-table3");
 const boxen = require("boxen");
@@ -50,15 +51,15 @@ function printAsciiArt() {
     const art = `
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
-║   ████████╗██╗██╗  ██╗████████╗ ██████╗ ██╗  ██╗         ║
-║   ╚══██╔══╝██║██║ ██╔╝╚══██╔══╝██╔═══██╗██║ ██╔╝         ║
-║      ██║   ██║█████╔╝    ██║   ██║   ██║█████╔╝          ║
-║      ██║   ██║██╔═██╗    ██║   ██║   ██║██╔═██╗          ║
-║      ██║   ██║██║  ██╗   ██║   ╚██████╔╝██║  ██╗         ║
-║      ╚═╝   ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝         ║
+║   ████████╗██╗██╗  ██╗████████╗ ██████╗ ██╗  ██╗           ║
+║   ╚══██╔══╝██║██║ ██╔╝╚══██╔══╝██╔═══██╗██║ ██╔╝           ║
+║      ██║   ██║█████╔╝    ██║   ██║   ██║█████╔╝            ║
+║      ██║   ██║██╔═██╗    ██║   ██║   ██║██╔═██╗            ║
+║      ██║   ██║██║  ██╗   ██║   ╚██████╔╝██║  ██╗           ║
+║      ╚═╝   ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝           ║
 ║                                                            ║
-║           🤖 SCRAPER BOT PRO v3.0 - Enhanced              ║
-║             Created with ❤️  by @mfajarb                   ║
+║                 SCRAPER BOT PRO v3.0                       ║
+║             Created with ❤️ by @mfajarb                    ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
 `;
@@ -232,26 +233,75 @@ async function scrapeProfileFromDOM(page) {
 }
 
 
-// VIDEO GRID SCRAPER (VIEWS)
-async function scrapeVideoGrid(page, scrollTimes = 5) {
-    for (let i = 0; i < scrollTimes; i++) {
-        await page.evaluate(() =>
-            window.scrollTo(0, document.body.scrollHeight)
-        );
-        await sleep(1200);
-    }
-
+// VIDEO GRID SCRAPER (VIEWS) 
+async function scrapeVideoGrid(page, maxVideos = null) {
     await waitForSelectorRetry(page, 'div[data-e2e="user-post-item"]');
 
-    return await page.evaluate(() => {
+    const SAFETY_LIMIT = 200; // Maximum videos to prevent memory issues
+    const MAX_SCROLL_ATTEMPTS = 100; // Maximum scroll attempts
+    const NO_NEW_CONTENT_THRESHOLD = 3; // Stop after 3 scrolls with no new content
+
+    let previousCount = 0;
+    let noNewContentCounter = 0;
+    let scrollAttempts = 0;
+
+    console.log(chalk.gray(`⏳ Scrolling untuk load video${maxVideos ? ` (target: ${maxVideos})` : ' (unlimited mode)'}...`));
+
+    while (scrollAttempts < MAX_SCROLL_ATTEMPTS) {
+        scrollAttempts++;
+
+        // Get current video count
+        const currentCount = await page.evaluate(() => {
+            return document.querySelectorAll('div[data-e2e="user-post-item"]').length;
+        });
+
+        // Show progress
+        if (scrollAttempts % 3 === 0) {
+            console.log(chalk.gray(`   Scroll ${scrollAttempts}: ${currentCount} video loaded...`));
+        }
+
+        // Check if we have enough videos
+        if (maxVideos && currentCount >= maxVideos) {
+            console.log(chalk.green(`✓ Target ${maxVideos} video tercapai!`));
+            break;
+        }
+
+        // Safety limit check
+        if (currentCount >= SAFETY_LIMIT) {
+            console.log(chalk.yellow(`⚠️  Safety limit (${SAFETY_LIMIT}) tercapai. Stopping scroll.`));
+            break;
+        }
+
+        // Check if no new content loaded
+        if (currentCount === previousCount) {
+            noNewContentCounter++;
+            if (noNewContentCounter >= NO_NEW_CONTENT_THRESHOLD) {
+                console.log(chalk.green(`✓ Sudah mencapai akhir feed (${currentCount} total video)`));
+                break;
+            }
+        } else {
+            noNewContentCounter = 0; // Reset counter if new content found
+        }
+
+        previousCount = currentCount;
+
+        // Scroll to bottom
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await sleep(1500); // Wait for content to load
+    }
+
+    // Get all videos
+    const allVideos = await page.evaluate(() => {
         return Array.from(
             document.querySelectorAll('div[data-e2e="user-post-item"]')
         ).map(item => ({
             video_url: item.querySelector("a")?.href || null,
-            views:
-                item.querySelector('[data-e2e="video-views"]')?.innerText || "0"
+            views: item.querySelector('[data-e2e="video-views"]')?.innerText || "0"
         }));
     });
+
+    // Return limited videos if maxVideos is set
+    return maxVideos ? allVideos.slice(0, maxVideos) : allVideos;
 }
 
 
@@ -305,6 +355,111 @@ async function fetchVideoEngagement(page, videoUrl) {
     } catch {
         return { likes: 0, comments: 0, shares: 0, saved: 0 };
     }
+}
+
+
+// SMART BATCH PROCESSING WITH CHECKPOINTS METHOD
+async function runParallelEngagementWithCheckpoint(context, videos, username, checkpointManager) {
+    const BATCH_SIZE = 50; // Save checkpoint every 50 videos
+    const WORKERS = 6;
+
+    // Load existing checkpoint if available
+    const savedCheckpoint = checkpointManager.load();
+    let processedVideos = savedCheckpoint?.processedVideos || [];
+    let startIndex = processedVideos.length;
+
+    console.log(chalk.gray(`\n┌${"─".repeat(68)}┐`));
+    console.log(chalk.gray("│") + chalk.white.bold(" BATCH PROCESSING WITH AUTO-SAVE".padEnd(68)) + chalk.gray("│"));
+    console.log(chalk.gray("└" + "─".repeat(68) + "┘"));
+    console.log(chalk.cyan(`  📦 Batch size: ${BATCH_SIZE} videos per checkpoint`));
+    console.log(chalk.cyan(`  💾 Auto-save: Enabled`));
+    console.log(chalk.cyan(`  🔄 Resume: ${startIndex > 0 ? `Starting from video ${startIndex + 1}` : 'Fresh start'}\n`));
+
+    const totalVideos = videos.length;
+    const remainingVideos = videos.slice(startIndex);
+
+    for (let batchStart = 0; batchStart < remainingVideos.length; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, remainingVideos.length);
+        const batch = remainingVideos.slice(batchStart, batchEnd);
+        const currentBatchNum = Math.floor((startIndex + batchStart) / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(totalVideos / BATCH_SIZE);
+
+        console.log(chalk.yellow.bold(`\n📦 BATCH ${currentBatchNum}/${totalBatches}`));
+        console.log(chalk.gray(`   Processing videos ${startIndex + batchStart + 1}-${startIndex + batchEnd} of ${totalVideos}`));
+
+        // Process batch with parallel workers
+        const pages = [];
+        for (let i = 0; i < WORKERS; i++) {
+            pages.push(await context.newPage());
+        }
+
+        const batchResults = Array(batch.length);
+        let cursor = 0;
+        let completed = 0;
+
+        await Promise.all(
+            pages.map(async (page) => {
+                while (true) {
+                    const idx = cursor++;
+                    if (idx >= batch.length) break;
+
+                    const v = batch[idx];
+                    const e = await fetchVideoEngagement(page, v.video_url);
+
+                    batchResults[idx] = {
+                        video_url: v.video_url,
+                        views: parseCountText(v.views),
+                        likes: e.likes,
+                        comments: e.comments,
+                        shares: e.shares,
+                        saved: e.saved
+                    };
+
+                    completed++;
+                    const globalProgress = startIndex + batchStart + completed;
+                    const progressBar = getProgressBar(globalProgress, totalVideos, 25);
+                    const videoNum = chalk.cyan(`[${globalProgress}/${totalVideos}]`);
+                    const metrics =
+                        chalk.blue("👁 ") + chalk.white(formatNumber(batchResults[idx].views).padEnd(7)) +
+                        chalk.red("❤️ ") + chalk.white(formatNumber(batchResults[idx].likes).padEnd(6)) +
+                        chalk.green("💬 ") + chalk.white(formatNumber(batchResults[idx].comments).padEnd(6)) +
+                        chalk.yellow("🔄 ") + chalk.white(formatNumber(batchResults[idx].shares).padEnd(6)) +
+                        chalk.magenta("⭐ ") + chalk.white(formatNumber(batchResults[idx].saved));
+
+                    console.log(`  ${videoNum} ${chalk.gray(progressBar)} ${metrics}`);
+                    await sleep(800);
+                }
+            })
+        );
+
+        // Close batch pages
+        for (const p of pages) await p.close();
+
+        // Add batch results to processed videos
+        processedVideos = processedVideos.concat(batchResults);
+
+        // Save checkpoint
+        const checkpointData = {
+            username: username,
+            mode: 'engagement',
+            processedVideos: processedVideos,
+            currentBatch: currentBatchNum,
+            totalBatches: totalBatches,
+            lastSaveTime: new Date().toISOString(),
+            totalVideos: totalVideos
+        };
+
+        checkpointManager.save(checkpointData);
+        console.log(chalk.green(`\n✓ Checkpoint saved: ${processedVideos.length}/${totalVideos} videos completed`));
+
+        // Memory cleanup hint
+        if (global.gc) {
+            global.gc();
+            console.log(chalk.gray('  🧹 Memory cleanup performed'));
+        }
+    }
+
+    return processedVideos;
 }
 
 
@@ -367,8 +522,8 @@ async function runParallelEngagement6Tabs(context, videos, username) {
 }
 
 
-// REPOST VIDEO SCRAPER (NEW FEATURE)
-async function scrapeRepostGrid(page, scrollTimes = 5) {
+// REPOST VIDEO SCRAPER 
+async function scrapeRepostGrid(page, maxVideos = null) {
     console.log(chalk.gray("⏳ Mencari tab Reposts..."));
 
     // Click on Repost tab
@@ -382,14 +537,6 @@ async function scrapeRepostGrid(page, scrollTimes = 5) {
         return [];
     }
 
-    // Scroll to load more repost videos
-    for (let i = 0; i < scrollTimes; i++) {
-        await page.evaluate(() =>
-            window.scrollTo(0, document.body.scrollHeight)
-        );
-        await sleep(1200);
-    }
-
     // Wait for repost items
     try {
         await waitForSelectorRetry(page, 'div[data-e2e="user-repost-item"]', { timeout: 5000 });
@@ -398,7 +545,61 @@ async function scrapeRepostGrid(page, scrollTimes = 5) {
         return [];
     }
 
-    return await page.evaluate(() => {
+    const SAFETY_LIMIT = 200;
+    const MAX_SCROLL_ATTEMPTS = 100;
+    const NO_NEW_CONTENT_THRESHOLD = 3;
+
+    let previousCount = 0;
+    let noNewContentCounter = 0;
+    let scrollAttempts = 0;
+
+    console.log(chalk.gray(`⏳ Scrolling untuk load repost video${maxVideos ? ` (target: ${maxVideos})` : ' (unlimited mode)'}...`));
+
+    while (scrollAttempts < MAX_SCROLL_ATTEMPTS) {
+        scrollAttempts++;
+
+        // Get current repost count
+        const currentCount = await page.evaluate(() => {
+            return document.querySelectorAll('div[data-e2e="user-repost-item"]').length;
+        });
+
+        // Show progress
+        if (scrollAttempts % 3 === 0) {
+            console.log(chalk.gray(`   Scroll ${scrollAttempts}: ${currentCount} repost loaded...`));
+        }
+
+        // Check if we have enough reposts
+        if (maxVideos && currentCount >= maxVideos) {
+            console.log(chalk.green(`✓ Target ${maxVideos} repost tercapai!`));
+            break;
+        }
+
+        // Safety limit check
+        if (currentCount >= SAFETY_LIMIT) {
+            console.log(chalk.yellow(`⚠️  Safety limit (${SAFETY_LIMIT}) tercapai. Stopping scroll.`));
+            break;
+        }
+
+        // Check if no new content loaded
+        if (currentCount === previousCount) {
+            noNewContentCounter++;
+            if (noNewContentCounter >= NO_NEW_CONTENT_THRESHOLD) {
+                console.log(chalk.green(`✓ Sudah mencapai akhir repost feed (${currentCount} total repost)`));
+                break;
+            }
+        } else {
+            noNewContentCounter = 0;
+        }
+
+        previousCount = currentCount;
+
+        // Scroll to bottom
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await sleep(1500);
+    }
+
+    // Get all reposts
+    const allReposts = await page.evaluate(() => {
         return Array.from(
             document.querySelectorAll('div[data-e2e="user-repost-item"]')
         ).map(item => ({
@@ -406,12 +607,16 @@ async function scrapeRepostGrid(page, scrollTimes = 5) {
             views: item.querySelector('[data-e2e="video-views"]')?.innerText || "0"
         }));
     });
+
+    // Return limited reposts if maxVideos is set
+    return maxVideos ? allReposts.slice(0, maxVideos) : allReposts;
 }
 
-async function runRepostScraping(context, username, page) {
+async function runRepostScraping(context, username, page, maxVideos = null) {
     const headerBox = boxen(
         chalk.bold.magenta(`SCRAPING REPOST VIDEO TIKTOK`) + "\n" +
-        chalk.white.bold(`@${username}`),
+        chalk.white.bold(`@${username}`) + "\n" +
+        chalk.gray(maxVideos ? `Limit: ${maxVideos} reposts` : `Mode: UNLIMITED (semua reposts)`),
         {
             padding: 1,
             margin: { top: 1, bottom: 1, left: 0, right: 0 },
@@ -442,7 +647,7 @@ async function runRepostScraping(context, username, page) {
     printProfileBox(profile);
 
     console.log(chalk.gray("\n⏳ Mengumpulkan daftar video repost..."));
-    const repostGrid = await scrapeRepostGrid(page, 5);
+    const repostGrid = await scrapeRepostGrid(page, maxVideos);
 
     if (repostGrid.length === 0) {
         console.log(chalk.yellow("\n⚠️  Tidak ada video repost untuk di-scrape"));
@@ -567,10 +772,11 @@ async function runRepostScraping(context, username, page) {
     return resultData;
 }
 
-async function runEngagementScraping(context, username, page) {
+async function runEngagementScraping(context, username, page, maxVideos = null) {
     const headerBox = boxen(
         chalk.bold.cyan(`SCRAPING VIDEO ENGAGEMENT`) + "\n" +
-        chalk.white.bold(`@${username}`),
+        chalk.white.bold(`@${username}`) + "\n" +
+        chalk.gray(maxVideos ? `Limit: ${maxVideos} videos` : `Mode: UNLIMITED (semua videos)`),
         {
             padding: 1,
             margin: { top: 1, bottom: 1, left: 0, right: 0 },
@@ -600,20 +806,42 @@ async function runEngagementScraping(context, username, page) {
 
     printProfileBox(profile);
 
-    console.log(chalk.gray("\n⏳ Mengumpulkan daftar video..."));
-    const grid = await scrapeVideoGrid(page, 5);
-    const MAX_VIDEOS = 15;
-    const targetVideos = grid.slice(0, MAX_VIDEOS);
+    // Initialize checkpoint manager
+    const checkpointManager = new CheckpointManager(username, 'engagement');
 
-    console.log(chalk.green(`✓ Ditemukan ${targetVideos.length} video`));
+    // Check for existing checkpoint
+    let existingCheckpoint = null;
+    if (checkpointManager.exists()) {
+        const info = checkpointManager.getInfo();
+        console.log(chalk.yellow(`\n⚠️  CHECKPOINT DITEMUKAN!`));
+        console.log(chalk.cyan(`   📊 Progress: ${info.totalProcessed} videos processed`));
+        console.log(chalk.cyan(`   📦 Last batch: ${info.lastBatch}`));
+        console.log(chalk.cyan(`   🕒 Last save: ${new Date(info.timestamp).toLocaleString()}\n`));
+
+        const resumeAnswer = await ask(chalk.yellow("❓ Resume dari checkpoint? (y=lanjut, n=mulai dari awal): "));
+
+        if (resumeAnswer.toLowerCase() === 'y') {
+            existingCheckpoint = checkpointManager.load();
+            console.log(chalk.green(`✓ Melanjutkan dari video ${existingCheckpoint.processedVideos.length + 1}\n`));
+        } else {
+            checkpointManager.delete();
+            console.log(chalk.green(`✓ Memulai scraping dari awal\n`));
+        }
+    }
+
+    console.log(chalk.gray("\n⏳ Mengumpulkan daftar video..."));
+    const grid = await scrapeVideoGrid(page, maxVideos);
+
+    console.log(chalk.green(`✓ Ditemukan ${grid.length} video`));
 
     const WORKERS = 6;
-    console.log(chalk.cyan(`⚡ Mulai scraping engagement (${WORKERS} parallel workers - FAST MODE)...`));
+    console.log(chalk.cyan(`⚡ Mulai scraping engagement (${WORKERS} parallel workers - BATCH MODE)...`));
 
-    const videos = await runParallelEngagement6Tabs(
+    const videos = await runParallelEngagementWithCheckpoint(
         context,
-        targetVideos,
-        username
+        grid,
+        username,
+        checkpointManager
     );
 
     // Print statistics
@@ -634,6 +862,10 @@ async function runEngagementScraping(context, username, page) {
     };
 
     const filePath = saveResult(username, resultData);
+
+    // Delete checkpoint after successful completion
+    checkpointManager.delete();
+    console.log(chalk.gray(`\n🗑️  Checkpoint cleared (scraping completed)`));
 
     // Print JSON Preview
     console.log(chalk.magenta.bold("\n💾 SAVED JSON OUTPUT:"));
@@ -704,6 +936,36 @@ async function runEngagementScraping(context, username, page) {
     const modeText = mode === "1" ? "Video Engagement" : "Video Repost";
     console.log(chalk.green(`✓ Mode dipilih: ${modeText}\n`));
 
+    // Pilih Video Limit
+    console.log(chalk.bold.white("📊 ATUR JUMLAH VIDEO:\n"));
+    console.log(chalk.cyan("  • Ketik angka") + chalk.gray(" (contoh: 50, 100, 200)"));
+    console.log(chalk.cyan("  • Ketik '0' atau 'unlimited'") + chalk.gray(" untuk scrape SEMUA video"));
+    console.log(chalk.yellow("  ⚠️  Safety limit: 200 videos (untuk mencegah memory overflow)\n"));
+
+    const limitInput = await ask(chalk.yellow("🔢 Jumlah video (0=unlimited, default=unlimited): "));
+    const limitTrimmed = limitInput.trim().toLowerCase();
+
+    let maxVideos = null; // default unlimited
+
+    if (limitTrimmed && limitTrimmed !== "0" && limitTrimmed !== "unlimited") {
+        const parsed = parseInt(limitTrimmed);
+        if (isNaN(parsed) || parsed < 0) {
+            console.log(chalk.red("❌ Input tidak valid. Menggunakan unlimited mode."));
+            maxVideos = null;
+        } else if (parsed > 200) {
+            console.log(chalk.yellow(`⚠️  Limit ${parsed} melebihi safety limit. Menggunakan 200.`));
+            maxVideos = 200;
+        } else {
+            maxVideos = parsed;
+        }
+    }
+
+    if (maxVideos === null) {
+        console.log(chalk.green("✓ Mode: UNLIMITED (scrape semua video yang tersedia)\n"));
+    } else {
+        console.log(chalk.green(`✓ Limit: ${maxVideos} video\n`));
+    }
+
     const input = await ask(chalk.yellow("📝 Masukkan username TikTok: "));
     const usernames = input
         .split(",")
@@ -732,9 +994,9 @@ async function runEngagementScraping(context, username, page) {
 
         try {
             if (mode === "1") {
-                await runEngagementScraping(context, username, page);
+                await runEngagementScraping(context, username, page, maxVideos);
             } else {
-                await runRepostScraping(context, username, page);
+                await runRepostScraping(context, username, page, maxVideos);
             }
         } catch (error) {
             console.log(chalk.red(`\n❌ Error scraping @${username}: ${error.message}`));
@@ -750,10 +1012,10 @@ async function runEngagementScraping(context, username, page) {
     await browser.close();
 
     const finalBox = boxen(
-        chalk.green.bold("🎉 SEMUA SCRAPING SELESAI!") + "\n\n" +
+        chalk.green.bold("🎉 SEMUA SCRAPING SELESAI") + "\n\n" +
         chalk.white(`Mode: `) + chalk.cyan(modeText) + "\n" +
         chalk.white(`Total Akun: `) + chalk.cyan(usernames.length) + "\n" +
-        chalk.white(`Hasil disimpan di: `) + chalk.yellow("results/"),
+        chalk.white(`Hasil disimpan di folder: `) + chalk.yellow("results"),
         {
             padding: 2,
             margin: 1,
