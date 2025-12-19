@@ -2,14 +2,14 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-3.0-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-production-success.svg)
 
 **Professional TikTok Profile & Video Analytics Scraper**
 
-*Scrape TikTok profiles, video statistics, and engagement metrics with beautiful console output*
+*Scrape TikTok profiles, video statistics, reposts, and engagement metrics with beautiful console output*
 
 [Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Documentation](#-documentation) • [FAQ](#-faq)
 
@@ -42,7 +42,9 @@ TikTok Scraper Bot Pro adalah tool profesional untuk scraping data profil dan vi
 - ✨ **Beautiful Console UI** - ASCII art, colors, tables, dan progress bars
 - 🚀 **Parallel Processing** - 6 concurrent workers untuk scraping SUPER cepat
 - 📊 **Comprehensive Analytics** - Engagement rate, top videos, dan aggregate statistics
-- 💾 **Structured Output** - JSON format yang clean dan well-formatted
+- � **Repost Scraper** - Scrape video yang di-repost oleh user (FITUR BARU!)
+- 🎯 **Dual Mode** - Pilih antara engagement scraping atau repost scraping
+- �💾 **Structured Output** - JSON format yang clean dan well-formatted
 - 🎨 **Enhanced UX** - Real-time progress tracking dengan visualisasi yang menarik
 
 > **Note:** Tool ini dibuat untuk educational purposes dan research. Pastikan untuk mematuhi TikTok's Terms of Service.
@@ -58,6 +60,7 @@ TikTok Scraper Bot Pro adalah tool profesional untuk scraping data profil dan vi
 - **Boxen Sections** - Visual boxes untuk setiap section
 - **Progress Bars** - Animated real-time progress tracking
 - **JSON Syntax Highlighting** - Colorized JSON preview
+- **Interactive Mode Selection** - Pilih mode scraping yang diinginkan
 
 ### 📊 Data Features
 - **Profile Scraping** - Followers, following, likes, bio, links
@@ -65,6 +68,8 @@ TikTok Scraper Bot Pro adalah tool profesional untuk scraping data profil dan vi
 - **Engagement Analytics** - Auto-calculate engagement rate
 - **Top Videos Ranking** - Identify best performing content
 - **Aggregate Statistics** - Total and average metrics
+- **Repost Video Scraper** - Scrape semua video yang di-repost user (NEW!)
+- **Dual Output Modes** - Engagement atau Repost data format
 
 ### ⚡ Performance Features
 - **Parallel Processing** - 6 concurrent workers (FAST MODE)
@@ -79,13 +84,17 @@ TikTok Scraper Bot Pro adalah tool profesional untuk scraping data profil dan vi
 ### 🎭 Startup Banner
 ```
 ╔════════════════════════════════════════════════════════════╗
+║                                                            ║
 ║   ████████╗██╗██╗  ██╗████████╗ ██████╗ ██╗  ██╗         ║
 ║   ╚══██╔══╝██║██║ ██╔╝╚══██╔══╝██╔═══██╗██║ ██╔╝         ║
 ║      ██║   ██║█████╔╝    ██║   ██║   ██║█████╔╝          ║
 ║      ██║   ██║██╔═██╗    ██║   ██║   ██║██╔═██╗          ║
 ║      ██║   ██║██║  ██╗   ██║   ╚██████╔╝██║  ██╗         ║
 ║      ╚═╝   ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝         ║
-║           🤖 SCRAPER BOT Tiktok v2.0 - Enhanced              ║
+║                                                            ║
+║           🤖 SCRAPER BOT PRO v3.0 - Enhanced              ║
+║             Created with ❤️  by @mfajarb                   ║
+║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
 ```
 
@@ -133,8 +142,8 @@ TikTok Scraper Bot Pro adalah tool profesional untuk scraping data profil dan vi
 
 1. **Clone Repository**
 ```bash
-git clone https://github.com/yourusername/tiktok-scraper-bot-pro.git
-cd tiktok-scraper-bot-pro
+git clone https://github.com/yourusername/tiktok-scraper-bot.git
+cd tiktok-scraper-bot
 ```
 
 2. **Install Dependencies**
@@ -163,17 +172,26 @@ npm start
 ```
 
 Kemudian:
-1. **Input Username**: Masukkan username TikTok (tanpa @) 
+1. **Pilih Mode**: Pilih mode scraping yang diinginkan
+```
+📋 PILIH MODE SCRAPING:
+  1. Scrape Video Analytics (likes, comments, shares, views)
+  2. Scrape Video Repost (reposted videos dari user)
+
+🎯 Pilih mode (1/2): 1
+```
+
+2. **Input Username**: Masukkan username TikTok (tanpa @)
 ```
 📝 Masukkan username TikTok: mydentsdentalcare
 ```
 
-2. **Confirm**: Ketik `y` untuk melanjutkan
+3. **Confirm**: Ketik `y` untuk melanjutkan
 ```
 ❓ Lanjutkan scraping? (y/n): y
 ```
 
-3. **Watch the Magic!** 🎉
+4. **Watch the Magic!** 🎉
 
 ### Multiple Accounts
 
@@ -186,20 +204,41 @@ Scrape multiple accounts sekaligus (pisahkan dengan koma):
 
 ## 💻 Usage Examples
 
-### Example 1: Single Account
+### Example 1: Engagement Mode (Video Analytics)
 ```bash
 $ npm start
 
+� PILIH MODE SCRAPING:
+  1. Scrape Video Analytics (likes, comments, shares, views)
+  2. Scrape Video Repost (reposted videos dari user)
+
+🎯 Pilih mode (1/2): 1
+�📝 Masukkan username TikTok: mydentsdentalcare
+❓ Lanjutkan scraping? (y/n): y
+
+# Output: Beautiful console display + JSON file saved as mydentsdentalcare.json
+```
+
+### Example 2: Repost Mode (Video Reposts) - NEW!
+```bash
+$ npm start
+
+📋 PILIH MODE SCRAPING:
+  1. Scrape Video Analytics (likes, comments, shares, views)
+  2. Scrape Video Repost (reposted videos dari user)
+
+🎯 Pilih mode (1/2): 2
 📝 Masukkan username TikTok: mydentsdentalcare
 ❓ Lanjutkan scraping? (y/n): y
 
-# Output: Beautiful console display + JSON file saved
+# Output: Repost videos list + JSON file saved as mydentsdentalcare_reposts.json
 ```
 
-### Example 2: Multiple Accounts
+### Example 3: Multiple Accounts
 ```bash
 $ npm start
 
+🎯 Pilih mode (1/2): 1
 📝 Masukkan username TikTok: user1,user2,user3
 ❓ Lanjutkan scraping? (y/n): y
 
@@ -207,7 +246,7 @@ $ npm start
 # Saves: results/user1.json, results/user2.json, results/user3.json
 ```
 
-### Example 3: Programmatic Usage
+### Example 4: Programmatic Usage
 ```javascript
 const { launchBrowser } = require('./src/browser');
 const { scrapeProfileFromDOM } = require('./src/index');
@@ -228,15 +267,16 @@ const { scrapeProfileFromDOM } = require('./src/index');
 ### File Structure
 ```
 results/
-├── username1.json
-├── username2.json
-└── username3.json
+├── username1.json                  (engagement mode)
+├── username2_reposts.json          (repost mode)
+└── username3.json                  (engagement mode)
 ```
 
-### JSON Schema
+### JSON Schema - Engagement Mode
 ```json
 {
-  "scrapedAt": "2025-12-18T09:05:32.252Z",
+  "scrapedAt": "2025-12-20T00:05:32.252Z",
+  "type": "engagement",
   "profile": {
     "username": "mydentsdentalcare",
     "follower": 11700,
@@ -260,9 +300,39 @@ results/
 }
 ```
 
+### JSON Schema - Repost Mode (NEW!)
+```json
+{
+  "scrapedAt": "2025-12-20T00:05:32.252Z",
+  "type": "repost",
+  "profile": {
+    "username": "mydentsdentalcare",
+    "follower": 11700,
+    "following": 4,
+    "likes": 307100,
+    "bio": "🦷 Lokasi Tangsel, Jaksel & Bekasi 🦷",
+    "bioLink": "linktr.ee/mydentsdentalcare",
+    "repostCountLoaded": 10
+  },
+  "repostVideos": [
+    {
+      "video_url": "https://www.tiktok.com/@otheruser/video/7477879270786796808",
+      "views": 1250000
+    }
+    // ... more repost videos
+  ],
+  "statistics": {
+    "totalVideos": 10,
+    "totalViews": 5000000,
+    "averageViews": 500000
+  }
+}
+```
+
 ### Data Types
 | Field | Type | Description |
 |-------|------|-------------|
+| `type` | String | "engagement" or "repost" |
 | `scrapedAt` | ISO String | Timestamp when scraped |
 | `username` | String | TikTok username |
 | `follower` | Number | Follower count |
@@ -270,11 +340,13 @@ results/
 | `likes` | Number | Total profile likes |
 | `bio` | String/null | Profile bio text |
 | `bioLink` | String/null | Bio link URL |
+| `videoCountLoaded` | Number | Videos scraped (engagement mode) |
+| `repostCountLoaded` | Number | Reposts scraped (repost mode) |
 | `views` | Number | Video view count |
-| `likes` | Number | Video like count |
-| `comments` | Number | Comment count |
-| `shares` | Number | Share count |
-| `saved` | Number | Bookmark/saved count |
+| `likes` | Number | Video like count (engagement only) |
+| `comments` | Number | Comment count (engagement only) |
+| `shares` | Number | Share count (engagement only) |
+| `saved` | Number | Bookmark/saved count (engagement only) |
 
 ---
 
@@ -302,8 +374,14 @@ async function waitForSelectorRetry(
 
 ### Adjust Scroll Depth
 ```javascript
+// Untuk engagement mode (video asli)
 const grid = await scrapeVideoGrid(page, 5); // Number of scrolls
+
+// Untuk repost mode
+const repostGrid = await scrapeRepostGrid(page, 5); // Number of scrolls
 ```
+
+> **Note**: Repost mode scroll depth mempengaruhi berapa banyak repost yang akan di-load dari halaman profil.
 
 ---
 
@@ -384,6 +462,19 @@ npx playwright install chrome
 - Increase `sleep()` delays
 - Use fewer `WORKERS`
 
+#### Issue: Repost tab not found (NEW!)
+**Solution**:
+- User mungkin belum pernah repost video
+- Pastikan menggunakan mode yang benar (mode 2)
+- Coba dengan username lain yang memiliki reposts
+- Tab repost hanya muncul jika user sudah pernah repost
+
+#### Issue: No repost videos found
+**Solution**:
+- Ini adalah kondisi normal jika user tidak memiliki repost
+- Tool akan menampilkan pesan "Tidak ada video repost"
+- Coba dengan username lain atau gunakan engagement mode
+
 ### Debug Mode
 Set environment variable:
 ```bash
@@ -411,12 +502,15 @@ DEBUG=true npm start
 - ❌ Don't use too many workers (6 is optimized, max 10)
 - ❌ Don't ignore error messages
 - ❌ Don't distribute scraped data without permission
+- ❌ Don't assume all users have repost videos
 
 ### Recommendations
 1. **Rate Limiting**: Wait at least 1 minute between scraping same account
 2. **Data Storage**: Use database for large-scale operations
 3. **Error Handling**: Always check if files exist before processing
 4. **Legal Compliance**: Review TikTok's ToS and local laws
+5. **Mode Selection**: Use engagement mode for detailed metrics, repost mode for tracking content sharing
+6. **Repost Scraping**: Check if user has reposts before expecting data (graceful failure handling)
 
 ---
 
@@ -458,11 +552,20 @@ Contributions are welcome! Please follow these guidelines:
 ## 📊 Performance Metrics
 
 ### Benchmarks
+
+#### Engagement Mode (Mode 1)
 - **Profile scraping**: ~2-3 seconds
 - **Per video**: ~2-3 seconds with retry
 - **15 videos (6 workers)**: ~40-60 seconds ⚡ (FAST!)
 - **Memory usage**: ~250-350MB
 - **CPU usage**: Moderate (browser rendering)
+
+#### Repost Mode (Mode 2) - NEW!
+- **Profile scraping**: ~2-3 seconds
+- **Repost grid loading**: ~5-10 seconds
+- **Total time (10 reposts)**: ~10-20 seconds ⚡⚡ (SUPER FAST!)
+- **Memory usage**: ~200-250MB (lighter than engagement mode)
+- **CPU usage**: Low-Moderate
 
 ### Optimization Tips
 1. Use `headless: true` for production (faster)
@@ -472,9 +575,63 @@ Contributions are welcome! Please follow these guidelines:
 
 ---
 
+## ❓ FAQ
+
+### General Questions
+
+**Q: Apa perbedaan antara Engagement Mode dan Repost Mode?**
+A: 
+- **Engagement Mode (Mode 1)**: Scrape video asli user dengan metrics lengkap (views, likes, comments, shares, saved)
+- **Repost Mode (Mode 2)**: Scrape video yang di-repost oleh user (hanya views, tidak ada engagement metrics)
+
+**Q: Kenapa saya harus memilih mode?**
+A: Mode selection memungkinkan Anda fokus pada data yang Anda butuhkan:
+- Gunakan Mode 1 untuk analisis performa video user
+- Gunakan Mode 2 untuk tracking konten yang user share/repost
+
+**Q: Apakah saya bisa scrape engagement dan repost sekaligus?**
+A: Tidak dalam satu run. Jalankan scraper dua kali dengan mode berbeda untuk mendapatkan kedua jenis data.
+
+### Repost Scraper Questions
+
+**Q: Kenapa repost scraper mengatakan "Tab Reposts tidak ditemukan"?**
+A: Tab repost hanya muncul jika user pernah repost video. Jika user tidak pernah repost, tab ini tidak ada di profil TikTok mereka.
+
+**Q: Mengapa repost video tidak memiliki data likes/comments/shares?**
+A: Repost scraper hanya mengambil data views dari grid view. Untuk mendapatkan engagement metrics untuk video repost, gunakan engagement mode dengan URL video tersebut.
+
+**Q: Apakah semua user memiliki fitur repost?**
+A: Ya, tetapi tidak semua user menggunakan fitur ini. Banyak user yang tidak pernah repost video.
+
+### Technical Questions
+
+**Q: Berapa lama waktu scraping untuk satu akun?**
+A: 
+- **Engagement Mode**: ~40-60 detik untuk 15 video
+- **Repost Mode**: ~10-20 detik (tergantung jumlah repost)
+
+**Q: Apakah bisa di-customize jumlah video yang di-scrape?**
+A: Ya, edit `MAX_VIDEOS` di `src/index.js` untuk engagement mode. Repost mode akan scrape semua yang tersedia.
+
+**Q: Kenapa output file berbeda untuk repost?**
+A: File repost memiliki suffix `_reposts.json` untuk membedakan dengan file engagement. Ini memudahkan identifikasi tipe data.
+
+---
+
 ## 📝 Changelog
 
-### v2.0 (Current) - Enhanced Console Logging
+### v3.0 (Current) - Repost Scraper & Mode Selection 🆕
+- ✨ **NEW FEATURE**: Repost Video Scraper - Scrape video yang di-repost oleh user
+- ✨ **NEW FEATURE**: Interactive Mode Selection - Pilih antara Engagement atau Repost mode
+- ✨ Dual output format with `type` field ("engagement" vs "repost")
+- ✨ Repost statistics (totalVideos, totalViews, averageViews)
+- ✨ Separate file naming for reposts (`username_reposts.json`)
+- ✨ Beautiful repost-specific console tables and boxes
+- ✨ Automatic repost tab detection and handling
+- 🐛 Fixed selector handling for repost items
+- 📚 Updated documentation for new features
+
+### v2.0 - Enhanced Console Logging
 - ✨ Added ASCII art banner
 - ✨ Implemented colorful console with chalk
 - ✨ Created beautiful tables with cli-table3
@@ -588,4 +745,3 @@ If you find this project useful, please consider giving it a ⭐!
 [⬆ Back to Top](#-tiktok-scraper-bot-pro)
 
 </div>
-
