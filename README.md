@@ -724,15 +724,15 @@ in the Software without restriction...
 
 If you find this project useful, please consider giving it a ⭐!
 
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/tiktok-scraper&type=Date)](https://star-history.com/#yourusername/tiktok-scraper&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=xdreizein666/tiktok-scraper-bot-pro&type=Date)](https://star-history.com/xdreizein666/tiktok-scraper-bot-pro&Date)
 
 ---
 
 ## 📈 Statistics
 
-![GitHub stars](https://img.shields.io/github/stars/yourusername/tiktok-scraper?style=social)
-![GitHub forks](https://img.shields.io/github/forks/yourusername/tiktok-scraper?style=social)
-![GitHub watchers](https://img.shields.io/github/watchers/yourusername/tiktok-scraper?style=social)
+![GitHub stars](https://img.shields.io/github/stars/xdreizein666/tiktok-scraper-bot-pro?style=social)
+![GitHub forks](https://img.shields.io/github/forks/xdreizein666/tiktok-scraper-bot-pro?style=social)
+![GitHub watchers](https://img.shields.io/github/watchers/xdreizein666/tiktok-scraper-bot-pro?style=social)
 
 ---
 
